@@ -1,0 +1,29 @@
+# Custom Autoware stack: ROS 2 + Autoware Core (Debian). Same DDS env in all
+# containers so ros2 topic echo/Hz work from host exec or sidecar.
+#
+# Mounts the whole autoware workspace (the folder that contains docker-env).
+# From docker-env/ that is the parent dir (..). Override: AUTOWARE_WORKSPACE=/path
+#
+# Usage:
+#   cd ~/autoware/docker-env && docker compose build && docker compose up -d
+#   ls /workspace  → autoware  autoware_data  autoware_map  docker-env
+
+services:
+  autoware:
+    build: .
+    image: autoware-custom:latest
+    container_name: autoware-custom
+    network_mode: host
+    stdin_open: true
+    tty: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTHORITY:-/home/developer/.Xauthority}
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><SharedMemory><Enable>false</Enable></SharedMemory></Domain></CycloneDDS>
+    volumes:
+      - ${AUTOWARE_WORKSPACE:-..}:/workspace:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    working_dir: /workspace
+    command: ["bash"]

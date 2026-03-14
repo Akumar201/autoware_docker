@@ -1,0 +1,61 @@
+# ── Large data & map directories ──
+autoware_data/
+autoware_map/
+
+# ── Cloned Autoware repo (has its own .git) ──
+autoware/
+
+# ── ROS 2 / colcon build artifacts ──
+build/
+install/
+log/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+*.whl
+
+# ── C++ build artifacts ──
+*.o
+*.so
+*.a
+*.dSYM/
+
+# ── TensorRT / ONNX compiled engines ──
+*.engine
+*.plan
+
+# ── Rosbag recordings ──
+*.db3
+*.mcap
+rosbag2_*/
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editors & IDEs ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# ── Environment & secrets ──
+.env
+.env.*
+
+# ── Logs ──
+*.log
+
+# ── Docker overrides (keep docker-compose.yaml, ignore local tweaks) ──
+docker-compose.override.yaml
+docker-compose.override.yml
