@@ -119,6 +119,18 @@ Example: `python3 plot_ros_data_movement.py --summary report_summary.csv --detai
 
 Requires: `pip install matplotlib numpy` (e.g. in container or on host).
 
+**Example output** (from a sample run; your numbers may differ):
+
+<p align="center">
+  <img src="template_graph/data_movement_per_run.png" width="480" alt="Data movement per run" />
+</p>
+<p align="center">
+  <img src="template_graph/graph_stats_per_run.png" width="480" alt="Graph stats per run" />
+</p>
+<p align="center">
+  <img src="template_graph/volume_per_run.png" width="480" alt="Volume per run" />
+</p>
+
 ---
 
 ### To Install `autoware_data` on Host

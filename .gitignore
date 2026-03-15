@@ -63,4 +63,3 @@ docker-compose.override.yml
 
 
 *.csv
-*.png   
