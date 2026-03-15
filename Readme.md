@@ -87,6 +87,12 @@ Alternatively, in RViz you can use the **TrafficLightPublishPanel** (if availabl
 
 Set initial pose in RViz to finish initialization. A second terminal can use `./start.sh --getin` and run `ros2 topic list` / `ros2 topic echo` (DDS is configured for discovery).
 
+**Autoware planning simulator (example):**
+
+<p align="center">
+  <img src="template_graph/autoware.png" width="560" alt="Autoware State Panel, map view, and RViz Displays" />
+</p>
+
 ---
 
 ### ROS 2 graph and throughput (optional)
