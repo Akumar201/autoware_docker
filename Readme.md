@@ -75,7 +75,49 @@ ros2 launch autoware_launch planning_simulator.launch.xml \
   data_path:=/workspace/autoware_data
 ```
 
+To **ignore traffic lights** (no stopping for red), add:
+
+```sh
+perception/enable_traffic_light:=false
+```
+
+(In the official Autoware planning-simulation Docker profile this is already set to `false`.)
+
+Alternatively, in RViz you can use the **TrafficLightPublishPanel** (if available) to set traffic light states to green so the planner sees green.
+
 Set initial pose in RViz to finish initialization. A second terminal can use `./start.sh --getin` and run `ros2 topic list` / `ros2 topic echo` (DDS is configured for discovery).
+
+---
+
+### ROS 2 graph and throughput (optional)
+
+From the workspace (e.g. `/workspace/scripts` inside the container, with Autoware running in another terminal):
+
+**`autoware_ros_info.py`** – Print node/topic/pub/sub counts and optionally measure throughput.
+
+| Option | Description |
+|--------|-------------|
+| (none) | Print nodes, topics, publishers, subscribers. |
+| `--active` | Subscribe to all topics with publishers, sample, list which have traffic. |
+| `--throughput` | Measure bytes/sec and msg/sec per topic; print table. |
+| `--sample-sec N` | Sampling duration in seconds (default: 5). |
+| `--runs N` | Number of runs (for use with `--csv`). |
+| `--csv PREFIX` | Run throughput N times and write CSVs: `PREFIX_summary.csv`, `PREFIX_throughput_detail.csv`. |
+
+Example: `python3 autoware_ros_info.py --csv report --sample-sec 10 --runs 5`
+
+**`plot_ros_data_movement.py`** – Plot data movement and graph stats from the summary/detail CSVs.
+
+| Option | Description |
+|--------|-------------|
+| `--summary PATH` | Summary CSV (default: `report_summary.csv`). |
+| `--detail PATH` | Throughput detail CSV (optional; adds top-topics chart). |
+| `--out DIR` | Directory for PNGs (default: current dir). |
+| `--top-n N` | Number of top topics to show (default: 15). |
+
+Example: `python3 plot_ros_data_movement.py --summary report_summary.csv --detail report_throughput_detail.csv --out ./plots`
+
+Requires: `pip install matplotlib numpy` (e.g. in container or on host).
 
 ---
 

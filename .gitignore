@@ -60,3 +60,7 @@ desktop.ini
 # ── Docker overrides (keep docker-compose.yaml, ignore local tweaks) ──
 docker-compose.override.yaml
 docker-compose.override.yml
+
+
+*.csv
+*.png   
