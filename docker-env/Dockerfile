@@ -19,7 +19,7 @@ RUN pip3 install --no-cache-dir gdown
 # DDS/ROS env — same for all processes so exec sees topics
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ENV ROS_DOMAIN_ID=0
-ENV CYCLONEDDS_URI='<CycloneDDS><Domain><SharedMemory><Enable>false</Enable></SharedMemory></Domain></CycloneDDS>'
+ENV CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><AllowMulticast>false</AllowMulticast></General><SharedMemory><Enable>false</Enable></SharedMemory><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>'
 
 # Source ROS 2 (and Autoware if present) in every shell
 RUN echo 'source /opt/ros/humble/setup.bash' >> /etc/bash.bashrc \

@@ -21,7 +21,7 @@ services:
       - XAUTHORITY=${XAUTHORITY:-/home/developer/.Xauthority}
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      - CYCLONEDDS_URI=<CycloneDDS><Domain><SharedMemory><Enable>false</Enable></SharedMemory></Domain></CycloneDDS>
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><AllowMulticast>false</AllowMulticast></General><SharedMemory><Enable>false</Enable></SharedMemory><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>
     volumes:
       - ${AUTOWARE_WORKSPACE:-..}:/workspace:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

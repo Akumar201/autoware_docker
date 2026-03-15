@@ -2,10 +2,14 @@
 autoware_data/
 autoware_map/
 
+# ── Cloned Autoware repo (has its own .git) ──
+autoware/
+
 # ── ROS 2 / colcon build artifacts ──
 build/
 install/
 log/
+.colcon/
 
 # ── Python ──
 __pycache__/

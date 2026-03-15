@@ -55,9 +55,16 @@ case "$1" in
   --down)    "${COMPOSE[@]}" down ;;
   --getin)
     need_running
-    docker exec -it "$CONTAINER" bash -lc '
+    # Pass DDS env explicitly so exec shell sees same topics as main container process
+    docker exec -it "$CONTAINER" env \
+      ROS_DOMAIN_ID=0 \
+      RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+      CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><AllowMulticast>false</AllowMulticast></General><SharedMemory><Enable>false</Enable></SharedMemory><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>' \
+      bash -lc '
       source /opt/ros/humble/setup.bash
       [ -f /opt/autoware/setup.bash ] && source /opt/autoware/setup.bash
+      # Suppress "not found" for optional/skipped packages (CUDA, TensorRT, etc.)
+      [ -f /workspace/autoware/install/setup.bash ] && source /workspace/autoware/install/setup.bash 2>/dev/null || true
       exec bash -i
     '
     ;;
