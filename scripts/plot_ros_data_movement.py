@@ -5,17 +5,21 @@ Plot data movement and graph stats per run from autoware_ros_info.py CSV output.
 Reads PREFIX_summary.csv (and optionally PREFIX_throughput_detail.csv), filters to
 numeric runs (excludes 'avg' row), and generates:
   - Data movement per run: total_bytes_s, total_msg_s
-  - Optional: graph stats per run (nodes, topics, publishers, subscribers)
-  - Optional: top topics by average bytes/s from detail CSV
+  - Graph stats per run (nodes, topics, publishers, subscribers)
+  - With --detail: top topics chart and pipeline-by-category chart (averaged across runs)
+
+Pipeline categories follow Autoware architecture: Sensing, Localization, Perception,
+Planning, Control, Map, Vehicle, System, Other (see node diagram in docs).
 
 Usage:
   python3 plot_ros_data_movement.py [--summary PATH] [--detail PATH] [--out DIR]
-  python3 plot_ros_data_movement.py --summary report_summary.csv --out ./plots
+  python3 plot_ros_data_movement.py --summary report_summary.csv --detail report_throughput_detail.csv --out ./plots
 """
 
 import argparse
 import csv
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 try:
@@ -64,6 +68,56 @@ def load_detail(path: Path, top_n: int = 15):
             })
     rows.sort(key=lambda x: -x["avg_bytes_s"])
     return rows[:top_n]
+
+
+def load_detail_all(path: Path):
+    """Load full detail CSV; return all rows with topic, avg_bytes_s, avg_msg_s."""
+    rows = []
+    with open(path, newline="") as f:
+        for r in csv.DictReader(f):
+            rows.append({
+                "topic": r["topic"],
+                "avg_bytes_s": float(r["avg_bytes_s"]),
+                "avg_msg_s": float(r["avg_msg_s"]),
+            })
+    return rows
+
+
+# Pipeline categories per Autoware architecture (node diagram)
+# https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture-v1/node-diagram/
+PIPELINE_ORDER = [
+    "Sensing", "Localization", "Perception", "Planning", "Control",
+    "Map", "Vehicle", "System", "Other",
+]
+
+
+def topic_to_pipeline_category(topic: str) -> str:
+    """Map topic path to pipeline stage (first path component)."""
+    topic = topic.strip("/")
+    if not topic:
+        return "Other"
+    parts = topic.split("/")
+    first = parts[0].lower()
+    # Map first segment to display name
+    if first == "sensing":
+        return "Sensing"
+    if first == "localization":
+        return "Localization"
+    if first in ("perception", "occupancy_grid_map"):
+        return "Perception"
+    if first == "planning":
+        return "Planning"
+    if first == "control":
+        return "Control"
+    if first == "map":
+        return "Map"
+    if first == "vehicle":
+        return "Vehicle"
+    if first in ("api", "system", "diagnostics", "diagnostics_graph", "logging_diag_graph", "tf", "autoware"):
+        return "System"
+    if first == "simulation":
+        return "System"
+    return "Other"
 
 
 def plot_data_movement_per_run(runs, out_dir: Path):
@@ -155,6 +209,51 @@ def plot_total_bytes_and_msgs_per_run(runs, out_dir: Path):
     print(f"Saved {out_path}")
 
 
+def plot_pipeline_by_category(detail_rows, out_dir: Path, title_suffix: str = ""):
+    """Bar charts: averaged MB/s and Messages/s by pipeline stage (Sensing, Localization, etc.)."""
+    if not detail_rows:
+        return
+    agg = defaultdict(lambda: {"bytes_s": 0.0, "msg_s": 0.0})
+    for r in detail_rows:
+        cat = topic_to_pipeline_category(r["topic"])
+        agg[cat]["bytes_s"] += r["avg_bytes_s"]
+        agg[cat]["msg_s"] += r["avg_msg_s"]
+    categories = [c for c in PIPELINE_ORDER if c in agg and (agg[c]["bytes_s"] > 0 or agg[c]["msg_s"] > 0)]
+    if not categories:
+        return
+    bytes_mb_s = [agg[c]["bytes_s"] / 1e6 for c in categories]
+    msg_s = [agg[c]["msg_s"] for c in categories]
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    x = np.arange(len(categories))
+    w = 0.6
+
+    ax1.bar(x, bytes_mb_s, width=w, color="white", edgecolor="black", linewidth=1.2)
+    ax1.set_ylabel("Throughput (MB/s)")
+    ax1.set_title("Throughput by pipeline stage (averaged across runs)" + (" — " + title_suffix if title_suffix else ""))
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(categories)
+    ax1.grid(axis="y", linestyle="--", alpha=0.7)
+    for spine in ("top", "right"):
+        ax1.spines[spine].set_visible(False)
+
+    ax2.bar(x, msg_s, width=w, color="white", edgecolor="black", linewidth=1.2)
+    ax2.set_xlabel("Pipeline stage")
+    ax2.set_ylabel("Messages/s")
+    ax2.set_title("Message rate by pipeline stage (averaged across runs)" + (" — " + title_suffix if title_suffix else ""))
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(categories)
+    ax2.grid(axis="y", linestyle="--", alpha=0.7)
+    for spine in ("top", "right"):
+        ax2.spines[spine].set_visible(False)
+
+    plt.tight_layout()
+    out_path = out_dir / "pipeline_throughput.png"
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Saved {out_path}")
+
+
 def plot_top_topics_bar(detail_rows, out_dir: Path):
     """Horizontal bar: top topics by avg_bytes_s (from detail CSV)."""
     if not detail_rows:
@@ -228,6 +327,8 @@ def main():
     if args.detail and args.detail.exists():
         detail_rows = load_detail(args.detail, top_n=args.top_n)
         plot_top_topics_bar(detail_rows, args.out)
+        detail_all = load_detail_all(args.detail)
+        plot_pipeline_by_category(detail_all, args.out)
     elif args.detail:
         print(f"warning: detail file not found, skipping top-topics chart: {args.detail}", file=sys.stderr)
 

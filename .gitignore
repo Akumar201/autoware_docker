@@ -63,3 +63,4 @@ docker-compose.override.yml
 
 
 *.csv
+scripts/plots
