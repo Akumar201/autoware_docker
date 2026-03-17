@@ -12,6 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-rmw-cyclonedds-cpp \
     ros-humble-cyclonedds \
     ros-humble-autoware-core \
+    ros-humble-topic-tools \
+    ros-humble-behaviortree-cpp-v3 \
+    ros-humble-grid-map-msgs \
+    ros-humble-grid-map-ros \
+    ros-humble-xacro \
+    libgflags-dev \
     python3-pip unzip \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir gdown

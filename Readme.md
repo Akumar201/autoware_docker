@@ -75,6 +75,14 @@ ros2 launch autoware_launch planning_simulator.launch.xml \
   data_path:=/workspace/autoware_data
 ```
 
+If launch fails with `xacro` not found or `libgflags.so.2.2` missing, rebuild the container image so the latest Dockerfile dependencies are included:
+
+```sh
+./docker-env/start.sh --down
+./docker-env/start.sh --rebuild
+./docker-env/start.sh --up
+```
+
 To **ignore traffic lights** (no stopping for red), add:
 
 ```sh
@@ -121,7 +129,11 @@ Example: `python3 autoware_ros_info.py --csv report --sample-sec 10 --runs 5`
 | `--out DIR` | Directory for PNGs (default: current dir). |
 | `--top-n N` | Number of top topics to show (default: 15). |
 
-Example: `python3 plot_ros_data_movement.py --summary report_summary.csv --detail report_throughput_detail.csv --out ./plots`
+Example: `python3 plot_ros_data_movement.py \
+  --summary report_summary.csv \
+  --detail report_throughput_detail.csv \
+  --out ./plots
+`
 
 Requires: `pip install matplotlib numpy` (e.g. in container or on host).
 
