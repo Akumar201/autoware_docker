@@ -14,11 +14,14 @@ services:
     image: autoware-custom:latest
     container_name: autoware-custom
     network_mode: host
+    gpus: all
     stdin_open: true
     tty: true
     environment:
       - DISPLAY=${DISPLAY}
       - XAUTHORITY=${XAUTHORITY:-/home/developer/.Xauthority}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
       - ROS_DOMAIN_ID=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - CYCLONEDDS_URI=<CycloneDDS><Domain><General><Interfaces><NetworkInterface address="127.0.0.1"/></Interfaces><AllowMulticast>false</AllowMulticast></General><SharedMemory><Enable>false</Enable></SharedMemory><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>120</MaxAutoParticipantIndex></Discovery></Domain></CycloneDDS>
