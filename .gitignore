@@ -5,6 +5,7 @@ autoware_map/
 # ── Cloned Autoware repo (has its own .git) ──
 autoware/
 
+AWSIM-Demo/
 # ── ROS 2 / colcon build artifacts ──
 build/
 install/
@@ -64,3 +65,6 @@ docker-compose.override.yml
 
 *.csv
 scripts/plots
+
+
+Shinjuku-Map

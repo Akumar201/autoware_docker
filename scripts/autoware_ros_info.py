@@ -130,7 +130,9 @@ def run_active(node: Node, sample_sec: float = 3.0, topic_names_and_types=None):
         while time.time() < end:
             executor.spin_once(timeout_sec=0.1)
     finally:
+        executor.remove_node(node)
         executor.shutdown()
+        cleanup_subscriptions(node, subscriptions)
 
     active = [(t, msg_count[t]) for t, _ in with_pub if msg_count.get(t, 0) > 0]
     active.sort(key=lambda x: -x[1])
@@ -154,6 +156,23 @@ def _fmt_bytes(b):
     return f"{b:.1f} TB"
 
 
+def format_topic_types(type_names):
+    """Return a stable string representation of advertised ROS message types."""
+    if not type_names:
+        return ""
+    return "|".join(sorted(set(type_names)))
+
+
+def cleanup_subscriptions(node: Node, subscriptions):
+    """Explicitly destroy subscriptions before node teardown to avoid rclpy cleanup races."""
+    for sub in subscriptions:
+        try:
+            node.destroy_subscription(sub)
+        except Exception:
+            pass
+    subscriptions.clear()
+
+
 def run_throughput(
     node: Node,
     sample_sec: float = 5.0,
@@ -162,7 +181,7 @@ def run_throughput(
 ):
     """Subscribe to all topics with publishers, measure per-topic and total bytes/sec.
     Returns (topic_rows, elapsed, total_msgs, total_bytes) or None if no subscriptions.
-    topic_rows: list of (topic_name, msgs, bytes, msg_s, bytes_s).
+    topic_rows: list of (topic_name, msgs, bytes, msg_s, bytes_s, avg_bytes_per_msg).
     """
     if topic_names_and_types is None:
         topic_names_and_types = node.get_topic_names_and_types()
@@ -224,7 +243,9 @@ def run_throughput(
             executor.spin_once(timeout_sec=0.1)
         elapsed = time.time() - t0
     finally:
+        executor.remove_node(node)
         executor.shutdown()
+        cleanup_subscriptions(node, subscriptions)
 
     rows = []
     total_bytes = 0
@@ -235,21 +256,27 @@ def run_throughput(
             continue
         bps = s["bytes"] / elapsed
         mps = s["msgs"] / elapsed
-        rows.append((topic_name, s["msgs"], s["bytes"], mps, bps))
+        avg_bytes_per_msg = s["bytes"] / s["msgs"] if s["msgs"] > 0 else 0.0
+        rows.append((topic_name, s["msgs"], s["bytes"], mps, bps, avg_bytes_per_msg))
         total_bytes += s["bytes"]
         total_msgs += s["msgs"]
 
     rows.sort(key=lambda r: -r[4])  # sort by bytes/sec descending
 
     if not quiet:
-        print(f"{'TOPIC':<90} {'msgs':>7} {'msg/s':>8} {'bytes':>12} {'rate':>12}")
-        print("-" * 135)
-        for topic, msgs, nbytes, mps, bps in rows:
-            print(f"{topic:<90} {msgs:>7} {mps:>8.1f} {_fmt_bytes(nbytes):>12} {_fmt_bytes(bps):>10}/s")
-        print("-" * 135)
+        print(f"{'TOPIC':<90} {'msgs':>7} {'msg/s':>8} {'bytes':>12} {'rate':>12} {'B/msg':>10}")
+        print("-" * 147)
+        for topic, msgs, nbytes, mps, bps, avg_bpm in rows:
+            print(
+                f"{topic:<90} {msgs:>7} {mps:>8.1f} {_fmt_bytes(nbytes):>12} {_fmt_bytes(bps):>10}/s {avg_bpm:>10.1f}"
+            )
+        print("-" * 147)
         total_bps = total_bytes / elapsed
         total_mps = total_msgs / elapsed
-        print(f"{'TOTAL':<90} {total_msgs:>7} {total_mps:>8.1f} {_fmt_bytes(total_bytes):>12} {_fmt_bytes(total_bps):>10}/s")
+        total_avg_bpm = total_bytes / total_msgs if total_msgs > 0 else 0.0
+        print(
+            f"{'TOTAL':<90} {total_msgs:>7} {total_mps:>8.1f} {_fmt_bytes(total_bytes):>12} {_fmt_bytes(total_bps):>10}/s {total_avg_bpm:>10.1f}"
+        )
         print(f"\nSampled {elapsed:.1f}s | {len(rows)} active topics | {_fmt_bytes(total_bps)}/s aggregate throughput")
 
     return (rows, elapsed, total_msgs, total_bytes)
@@ -264,7 +291,9 @@ def run_analysis_to_csv(
     Uses a fresh node per run so subscriptions do not accumulate and throughput stays consistent.
     """
     summary_rows = []
-    all_topic_data = defaultdict(lambda: {"msgs": 0, "bytes": 0, "runs_with_data": 0})
+    all_topic_data = defaultdict(
+        lambda: {"msgs": 0, "bytes": 0, "runs_with_data": 0, "type_names": set()}
+    )
     total_elapsed_all_runs = 0.0
 
     for run_id in range(1, num_runs + 1):
@@ -291,6 +320,7 @@ def run_analysis_to_csv(
                 "total_bytes": 0,
                 "total_msg_s": 0.0,
                 "total_bytes_s": 0.0,
+                "avg_bytes_per_msg": 0.0,
             })
             continue
         rows, elapsed, total_msgs, total_bytes = result
@@ -308,11 +338,16 @@ def run_analysis_to_csv(
             "total_bytes": total_bytes,
             "total_msg_s": round(total_msg_s, 2),
             "total_bytes_s": round(total_bytes_s, 2),
+            "avg_bytes_per_msg": round(total_bytes / total_msgs, 2) if total_msgs > 0 else 0.0,
         })
-        for topic_name, msgs, nbytes, _mps, _bps in rows:
+        topic_type_map = {
+            topic_name: set(type_names) for topic_name, type_names in topic_names_and_types
+        }
+        for topic_name, msgs, nbytes, _mps, _bps, _avg_bpm in rows:
             all_topic_data[topic_name]["msgs"] += msgs
             all_topic_data[topic_name]["bytes"] += nbytes
             all_topic_data[topic_name]["runs_with_data"] += 1
+            all_topic_data[topic_name]["type_names"].update(topic_type_map.get(topic_name, []))
 
     prefix = Path(csv_prefix).resolve()
     summary_path = prefix.parent / f"{prefix.name}_summary.csv"
@@ -324,6 +359,7 @@ def run_analysis_to_csv(
             fieldnames=[
                 "run_id", "nodes", "topics", "publishers", "subscribers",
                 "elapsed_sec", "total_msgs", "total_bytes", "total_msg_s", "total_bytes_s",
+                "avg_bytes_per_msg",
             ],
         )
         w.writeheader()
@@ -342,13 +378,14 @@ def run_analysis_to_csv(
                 "total_bytes": round(sum(r["total_bytes"] for r in summary_rows) / len(summary_rows), 0),
                 "total_msg_s": round(sum(r["total_msg_s"] for r in summary_rows) / len(summary_rows), 2),
                 "total_bytes_s": round(sum(r["total_bytes_s"] for r in summary_rows) / len(summary_rows), 2),
+                "avg_bytes_per_msg": round(sum(r["avg_bytes_per_msg"] for r in summary_rows) / len(summary_rows), 2),
             })
 
     with open(detail_path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow([
-            "topic", "runs_with_data", "total_msgs", "total_bytes", "total_elapsed_sec",
-            "avg_msg_s", "avg_bytes_s",
+            "topic", "topic_type", "runs_with_data", "total_msgs", "total_bytes", "total_elapsed_sec",
+            "avg_msg_s", "avg_bytes_s", "avg_bytes_per_msg",
         ])
         total_elapsed_sec = total_elapsed_all_runs  # same for all topics in this run set
         for topic_name in sorted(all_topic_data.keys(), key=lambda t: -all_topic_data[t]["bytes"]):
@@ -359,14 +396,17 @@ def run_analysis_to_csv(
             elapsed = total_elapsed_all_runs if total_elapsed_all_runs > 0 else 1
             avg_msg_s = d["msgs"] / elapsed
             avg_bytes_s = d["bytes"] / elapsed
+            avg_bytes_per_msg = d["bytes"] / d["msgs"] if d["msgs"] > 0 else 0.0
             w.writerow([
                 topic_name,
+                format_topic_types(d["type_names"]),
                 d["runs_with_data"],
                 d["msgs"],
                 d["bytes"],
                 round(total_elapsed_all_runs, 2),
                 round(avg_msg_s, 2),
                 round(avg_bytes_s, 2),
+                round(avg_bytes_per_msg, 2),
             ])
 
     print(f"Wrote {summary_path}")

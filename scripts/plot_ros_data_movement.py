@@ -40,6 +40,16 @@ except ImportError:
     sys.exit(1)
 
 
+def avg_bytes_per_msg_from_row(row):
+    """Read avg_bytes_per_msg from CSV or derive it for older files."""
+    value = row.get("avg_bytes_per_msg", "")
+    if value not in (None, ""):
+        return float(value)
+    total_msgs = int(row.get("total_msgs", 0) or 0)
+    total_bytes = int(row.get("total_bytes", 0) or 0)
+    return (total_bytes / total_msgs) if total_msgs else 0.0
+
+
 def load_summary(path: Path):
     """Load summary CSV; return list of run dicts (exclude 'avg' row)."""
     rows = []
@@ -58,6 +68,7 @@ def load_summary(path: Path):
                 "total_bytes": int(r["total_bytes"]),
                 "total_msg_s": float(r["total_msg_s"]),
                 "total_bytes_s": float(r["total_bytes_s"]),
+                "avg_bytes_per_msg": avg_bytes_per_msg_from_row(r),
             })
     return rows
 
@@ -69,8 +80,11 @@ def load_detail(path: Path, top_n: int = 15):
         for r in csv.DictReader(f):
             rows.append({
                 "topic": r["topic"],
+                "topic_type": r.get("topic_type", ""),
                 "avg_bytes_s": float(r["avg_bytes_s"]),
                 "avg_msg_s": float(r["avg_msg_s"]),
+                "avg_bytes_per_msg": avg_bytes_per_msg_from_row(r),
+                "total_msgs": int(r["total_msgs"]),
                 "total_bytes": int(r["total_bytes"]),
                 "runs_with_data": int(r["runs_with_data"]),
             })
@@ -181,12 +195,14 @@ def load_detail_rows(path: Path):
         for r in csv.DictReader(f):
             rows.append({
                 "topic": r["topic"],
+                "topic_type": r.get("topic_type", ""),
                 "runs_with_data": int(r["runs_with_data"]),
                 "total_msgs": int(r["total_msgs"]),
                 "total_bytes": int(r["total_bytes"]),
                 "total_elapsed_sec": float(r["total_elapsed_sec"]),
                 "avg_msg_s": float(r["avg_msg_s"]),
                 "avg_bytes_s": float(r["avg_bytes_s"]),
+                "avg_bytes_per_msg": avg_bytes_per_msg_from_row(r),
             })
     return rows
 

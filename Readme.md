@@ -113,10 +113,10 @@ From the workspace (e.g. `/workspace/scripts` inside the container, with Autowar
 |--------|-------------|
 | (none) | Print nodes, topics, publishers, subscribers. |
 | `--active` | Subscribe to all topics with publishers, sample, list which have traffic. |
-| `--throughput` | Measure bytes/sec and msg/sec per topic; print table. |
+| `--throughput` | Measure bytes/sec, msg/sec, and avg bytes/message per topic; print table. |
 | `--sample-sec N` | Sampling duration in seconds (default: 5). |
 | `--runs N` | Number of runs (for use with `--csv`). |
-| `--csv PREFIX` | Run throughput N times and write CSVs: `PREFIX_summary.csv`, `PREFIX_throughput_detail.csv`. |
+| `--csv PREFIX` | Run throughput N times and write CSVs: `PREFIX_summary.csv`, `PREFIX_throughput_detail.csv` (including avg bytes/message metrics). |
 
 Example: `python3 autoware_ros_info.py --csv report --sample-sec 10 --runs 5`
 
@@ -187,3 +187,22 @@ gdown -O ~/autoware_map/ 'https://docs.google.com/uc?export=download&id=1499_nsb
 # Unzip the map file to the autoware_map directory
 unzip -d ~/autoware_map ~/autoware_map/sample-map-planning.zip
 ```
+
+
+#### Different scenarios 
+
+cd /workspace/autoware
+source install/setup.bash
+
+ros2 launch autoware_launch planning_simulator.launch.xml \
+  map_path:=/workspace/autoware_map/sample-map-planning \
+  vehicle_model:=sample_vehicle \
+  sensor_model:=sample_sensor_kit \
+  data_path:=/workspace/autoware_data
+
+
+apt update
+apt install -y libvulkan1 vulkan-tools mesa-utils
+nvidia-smi
+vulkaninfo --summary
+glxinfo -B
