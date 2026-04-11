@@ -15,6 +15,11 @@ services:
     container_name: autoware-custom
     network_mode: host
     gpus: all
+    # Without this, Docker overlays an empty tmpfs on e.g. /sys/devices/virtual/powercap,
+    # so /sys/class/powercap/intel-rapl:0 symlinks break and RAPL energy_uj is missing.
+    # Lighter than privileged: see `docker run --security-opt systempaths=unconfined`.
+    security_opt:
+      - systempaths=unconfined
     stdin_open: true
     tty: true
     environment:
@@ -28,5 +33,8 @@ services:
     volumes:
       - ${AUTOWARE_WORKSPACE:-..}:/workspace:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # RAPL (CPU energy): use security_opt systempaths=unconfined above — bind-mounting
+      # powercap alone is not enough; Docker masks sysfs and symlinks stay broken.
+      # If energy_uj is 0400 and you run as non-root: sudo chmod a+r /sys/class/powercap/*/energy_uj
     working_dir: /workspace
     command: ["bash"]

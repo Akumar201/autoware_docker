@@ -8,7 +8,7 @@ For the general workspace guide, planning simulator flow, and ROS throughput scr
 
 This guide is based on the current official AWSIM quick start demo, but adapted for this repository's Docker workflow instead of the stock `setup-dev-env.sh` flow:
 
-- Official AWSIM quick start: https://tier4.github.io/AWSIM/GettingStarted/QuickStartDemo/
+- Official AWSIM quick start: [https://tier4.github.io/AWSIM/GettingStarted/QuickStartDemo/](https://tier4.github.io/AWSIM/GettingStarted/QuickStartDemo/)
 - `autoware_launch` fork: `https://github.com/Akumar201/autoware_launch` on branch `fix/awsim-e2e-workarounds`
 - `autoware_universe` fork: `https://github.com/Akumar201/autoware_universe` on branch `fix/pointcloud-row-step`
 
@@ -291,3 +291,4 @@ After both AWSIM and Autoware are running:
 - `autoware_map/` is optional. `Shinjuku-Map/` is the required map for the AWSIM e2e run.
 - The current AWSIM workaround command is specific to this non-CUDA workspace state.
 - If you later build a complete CUDA/TensorRT-capable workspace, you should retest whether the stock `e2e_simulator.launch.xml` command works without the current overrides.
+
